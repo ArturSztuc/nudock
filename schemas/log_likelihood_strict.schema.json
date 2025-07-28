@@ -1,0 +1,41 @@
+{
+  "$id": "log_likelihood",
+  "type": "object",
+  "properties": {
+    "request": {
+      "type":"object",
+      "properties": {
+        "osc_pars": {
+          "type": "object",
+          "properties": {
+            "Deltam2_32": { "type": "number" },
+            "Deltam2_21": { "type": "number" },
+            "Theta23": { "type": "number" },
+            "Theta13": { "type": "number" },
+            "Theta12": { "type": "number" },
+            "DeltaCP": { "type": "number" }
+          },
+          "required": [ "Deltam2_32", "Deltam2_21", "Theta23", "Theta13", "Theta12", "DeltaCP" ],
+          "additionalProperties": false
+        },
+        "sys_pars": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": { "type": "number"}
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "properties": {
+        "log_likelihood" : {"type": "number"}
+      },
+      "required": ["log_likelihood"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["request", "response"],
+  "additionalProperties": false
+}

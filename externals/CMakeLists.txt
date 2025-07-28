@@ -44,12 +44,12 @@ find_package(nlohmann_json_schema_validator)
 
 if(nlohmann_json_schema_validator_FOUND)
     message("Found nlohmann_json_schema_validator")
-elseif(EXISTS "${PROJECT_SOURCE_DIR}/externals/json-schema-validator")
-    message("Did not find nlohmann_json_schema_validator. We will compile submodule instead.")  
-
-    # Not actually installing it, we only need the headers
-    set(JSON_SCHEMA_VALIDATOR_Install ON)
-    add_subdirectory(externals/json-schema-validator)
+#elseif(EXISTS "${PROJECT_SOURCE_DIR}/externals/json-schema-validator")
+#    message("Did not find nlohmann_json_schema_validator. We will compile submodule instead.")  
+#
+#    # Not actually installing it, we only need the headers
+#    #add_subdirectory(externals/json-schema-validator EXCLUDE_FROM_ALL)
+#    ExternalProject_Add(externals/json-schema-validator)
 else()
     message("Did not find nlohmann_json_schema_validator locally. We will fetch it directly from github instead")   
 
@@ -57,5 +57,4 @@ else()
     include(FetchContent)
     FetchContent_Declare(json-schema-validator URL https://github.com/pboettch/json-schema-validator/archive/refs/tags/2.3.0.tar.gz)
     FetchContent_MakeAvailable(json-schema-validator)
-    set(JSON_SCHEMA_VALIDATOR_Install ON)
 endif(nlohmann_json_schema_validator_FOUND)

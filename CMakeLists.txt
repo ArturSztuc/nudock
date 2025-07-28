@@ -38,7 +38,7 @@ target_link_libraries(nudock
   INTERFACE
     nlohmann_json::nlohmann_json
     httplib::httplib
-    nlohmann_json_schema_validator
+    #nlohmann_json_schema_validator
 )
 
 # Link the schema dirs to the library

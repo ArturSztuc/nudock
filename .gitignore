@@ -1,6 +1,7 @@
 externals/cpp-httplib/*
 externals/json/*
 build
+install
 
 .cache
 **.bak

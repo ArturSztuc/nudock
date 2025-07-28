@@ -5,7 +5,7 @@ project(NuDock VERSION 0.0.1 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -19,6 +19,7 @@ add_library(nudock STATIC
   nudock.cpp
 )
 
+# Add the library version
 target_compile_definitions(nudock
   PUBLIC
     VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
@@ -27,6 +28,7 @@ target_compile_definitions(nudock
     VERSION="${PROJECT_VERSION}"
 )
 
+# Include directories for nudock
 target_include_directories(nudock
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -37,6 +39,7 @@ target_include_directories(nudock
     $<INSTALL_INTERFACE:include>
 )
 
+# Link the schema dirs to the library
 set(SCHEMAS_DIR "${CMAKE_INSTALL_INCLUDEDIR}/nudock/schemas")
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/nudock_config.hpp.in
@@ -46,10 +49,11 @@ configure_file(
 add_compile_definitions(SCHEMAS_DIR="${CMAKE_INSTALL_INCLUDEDIR}/nudock/schemas")
 add_definitions(-DSCHEMAS_DIR="${SCHEMAS_DIR}")
 
+# Install the headers
 install(FILES nudock.hpp ${CMAKE_CURRENT_BINARY_DIR}/nudock_config.hpp
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/nudock)
 
-# Install should also move the schemas folder with the json schemas
+# Install should also copy the schemas folder with the json schemas
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/schemas/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/nudock/schemas
   FILES_MATCHING PATTERN "*.json"
@@ -66,7 +70,7 @@ install(EXPORT nudockTargets
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/NuDock
 )
 
-## Make the install directory available for the tests
+# Make the install directory available for the tests
 set(NuDock_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/NuDock" CACHE PATH "NuDock CMake package directory" FORCE)
 
 include(CMakePackageConfigHelpers)

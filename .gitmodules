@@ -1,0 +1,9 @@
+[submodule "externals/cpp-httplib"]
+	path = externals/cpp-httplib
+	url = https://github.com/yhirose/cpp-httplib.git
+[submodule "externals/json-schema-validator"]
+	path = externals/json-schema-validator
+	url = https://github.com/pboettch/json-schema-validator.git
+[submodule "externals/json"]
+	path = externals/json
+	url = https://github.com/nlohmann/json.git

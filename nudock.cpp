@@ -37,13 +37,9 @@ void NuDock::register_response(const std::string& _request,
     std::cerr << DEBUG() << "Request handler for \"" << _request << "\" already exists!" << std::endl;
     return;
   }
-  if (_schema_path.empty()) {
-    std::cerr << DEBUG() << "Schema path is empty!" << std::endl;
-    return;
-  }
 
   // Create the schema validator for a specific request
-  json schema = load_json_file(_schema_path);
+  json schema = load_json_file(schema_path);
   SchemaValidator validator;
   validator.schema = schema["properties"];
 
@@ -60,6 +56,7 @@ void NuDock::register_response(const std::string& _request,
 
   // Add the request handler function
   m_request_handlers[_request] = std::move(_handler_function);
+  std::cout << DEBUG() << "Registered request handler for \"" << _request << "\" with schema at: " << schema_path << std::endl;
 }
 
 bool NuDock::validate_start(const json& _message)
@@ -83,7 +80,6 @@ bool NuDock::validate_start(const json& _message)
 
 void NuDock::start_server()
 {
-  m_version = "0.0.1";
   if (m_client || m_server) {
     std::cerr << DEBUG() << "Client or server already started" << std::endl;
     return;
@@ -196,7 +192,6 @@ void NuDock::start_server()
 
 void NuDock::start_client()
 {
-  m_version = "0.0.1";
   if (m_client || m_server) {
     std::cerr << DEBUG() << "Client or server already started" << std::endl;
     return;
@@ -226,7 +221,7 @@ void NuDock::start_client()
   std::cout << DEBUG() << "VERSION: " << m_version << " started" << std::endl;
 }
 
-void NuDock::send_request(const std::string& _request, const json& _message)
+json NuDock::send_request(const std::string& _request, const json& _message)
 {
   m_request_counter++;
   if (!m_client) {
@@ -239,23 +234,24 @@ void NuDock::send_request(const std::string& _request, const json& _message)
     std::abort();
   }
 
-  httplib::Result res;
   try{
-    res = m_client->Post(_request, _message.dump(), "application/json");
+    httplib::Result res = m_client->Post(_request, _message.dump(), "application/json");
+
+    if (res && res->status == 200) {
+      json res_json = json::parse(res->body);
+      std::cout << DEBUG() << "Received response: " << res_json << " from Server" << std::endl;
+      std::cout << DEBUG() << "Request counter: " << m_request_counter << std::endl;
+      return res_json;
+    } else {
+      std::cerr << DEBUG() << "Request failed with status: " << (res ? res->status : 0) 
+                << ", error: \"" << (res ? res->body : "") 
+                << "\", message: " << _message.dump() << std::endl;
+      std::cout << DEBUG() << "Request counter: " << m_request_counter << std::endl;
+      std::abort();
+    }
   } catch (const std::exception& e) {
     std::cerr << DEBUG() << "Exception caught while sending request: " << e.what() << std::endl;
     std::abort();
   }
 
-  if (res && res->status == 200) {
-    auto res_json = json::parse(res->body);
-    std::cout << DEBUG() << "Received response: " << res_json << " from Server" << std::endl;
-    std::cout << DEBUG() << "Request counter: " << m_request_counter << std::endl;
-  } else {
-    std::cerr << DEBUG() << "Request failed with status: " << (res ? res->status : 0) 
-              << ", error: \"" << (res ? res->body : "") 
-              << "\", message: " << _message.dump() << std::endl;
-    std::cout << DEBUG() << "Request counter: " << m_request_counter << std::endl;
-    std::abort();
-  }
 }

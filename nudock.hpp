@@ -10,8 +10,6 @@
  * @todo: Refactor to have the http as an option, so we can use this as a library link directly between cross-compiled C++ code.
  * @todo: Remove hard-coded localhost and port, make them configurable. If configurable, could even run on a different machine!
  * @todo: Rethink abort(). 
- * @todo: The version defined in CMakefile should be used here.
- * @todo: Sort out the build system for the external packages!
  * 
  * @date 2025-07-01
  * @author Artur Sztuc (a.sztuc@ucl.ac.uk)

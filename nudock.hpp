@@ -91,8 +91,9 @@ class NuDock
      * 
      * @param _request Request ID name
      * @param _message json object with the request message
+     * @return json object with the response from the server
      */
-    void send_request(const std::string& _request_name,
+    json send_request(const std::string& _request_name,
                       const json& _message);
 
   // Private member functions

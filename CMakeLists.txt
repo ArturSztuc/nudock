@@ -1,13 +1,14 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.14)
 
 project(NuDock VERSION 0.0.1 LANGUAGES CXX)
-
 
 include(GNUInstallDirs)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_FLAGS                " ${CMAKE_CXX_FLAGS_INIT} -fPIC")
+
 
 # Will create compile_commands.json for autocompleting in vim
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -15,11 +16,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Dependencies
 include(${CMAKE_SOURCE_DIR}/externals/CMakeLists.txt)
 
-add_library(nudock INTERFACE)
+add_library(nudock SHARED
+  nudock.cpp
+)
 
 # Add the library version
 target_compile_definitions(nudock
-  INTERFACE
+  PUBLIC
     VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
     VERSION_MINOR=${PROJECT_VERSION_MINOR}
     VERSION_PATCH=${PROJECT_VERSION_PATCH}
@@ -28,27 +31,27 @@ target_compile_definitions(nudock
 
 # Include directories for nudock
 target_include_directories(nudock
-  INTERFACE
+  PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(nudock
-  INTERFACE
-    nlohmann_json::nlohmann_json
-    httplib::httplib
-    #nlohmann_json_schema_validator
+  PUBLIC
+    nlohmann_json
+    nlohmann_json_schema_validator::validator
+    httplib
 )
 
 # Link the schema dirs to the library
-set(SCHEMAS_DIR "${CMAKE_INSTALL_INCLUDEDIR}/nudock/schemas")
+set(SCHEMAS_DIR "${CMAKE_INSTALL_FULL_INCLUDEDIR}/nudock/schemas")
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/nudock_config.hpp.in
   ${CMAKE_CURRENT_BINARY_DIR}/nudock_config.hpp
   @ONLY
 )
-add_compile_definitions(SCHEMAS_DIR="${CMAKE_INSTALL_INCLUDEDIR}/nudock/schemas")
+add_compile_definitions(SCHEMAS_DIR="${CMAKE_INSTALL_FULL_INCLUDEDIR}/nudock/schemas")
 add_definitions(-DSCHEMAS_DIR="${SCHEMAS_DIR}")
 
 # Install the headers

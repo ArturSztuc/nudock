@@ -3,17 +3,20 @@
  * 
  * @brief A small tool for server-client communication using JSON over HTTP.
  * 
+ * @todo: Refactor to have the http as an option, so we can use this as a library link directly between cross-compiled C++ code.
  * @todo: Sort out the debugging define, should be more descriptive.
  * @todo: Add schema validation layers on the client side too.
  * @todo: The validation should be a compile-time option? Or better, templated. E.g. NuDock<true> for validation, NuDock<false> for no validation.
  * @todo: All functions should have documentation. More comments.
- * @todo: Refactor to have the http as an option, so we can use this as a library link directly between cross-compiled C++ code.
  * @todo: Remove hard-coded localhost and port, make them configurable. If configurable, could even run on a different machine!
  * @todo: Rethink abort(). 
+ * @todo: MORE SPEED! Test the Unix Domain Sockets instead, or even shared memory.
  * 
  * @date 2025-07-01
  * @author Artur Sztuc (a.sztuc@ucl.ac.uk)
  */
+
+#pragma once
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -28,9 +31,9 @@
 
 #include "nudock_config.hpp"
 
-using nlohmann::json;
+//using nlohmann::json;
 using nlohmann::json_schema::json_validator;
-using HandlerFunction = std::function<json(const json&)>;
+using HandlerFunction = std::function<nlohmann::json(const nlohmann::json&)>;
 
 // Debugging macro to print debug messages with function name and line number
 #define DEBUG() (this->m_debug_prefix + "::" + __func__ + "::L" + std::to_string(__LINE__) + " ")
@@ -47,13 +50,13 @@ using HandlerFunction = std::function<json(const json&)>;
 struct SchemaValidator {
   std::shared_ptr<json_validator> request_validator;
   std::shared_ptr<json_validator> response_validator;
-  json schema;
+  nlohmann::json schema;
 };
 
 // Custom error handler that throws exceptions on validation errors
 class custom_throwing_error_handler : public nlohmann::json_schema::error_handler
 {
-	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
+	void error(const nlohmann::json::json_pointer &ptr, const nlohmann::json &instance, const std::string &message) override
 	{
     //nlohmann::json_schema::basic_error_handler::error(ptr, instance, message);
     throw std::invalid_argument(std::string("Pointer: \"") + ptr.parent_pointer().to_string() + "\" instance: \"" + instance.dump() + "\"error message: \"" + message + "\"");
@@ -82,7 +85,7 @@ class NuDock
      */
     void register_response(const std::string& _request_name, 
                            HandlerFunction _handler_function,
-                           const std::string_view& _schema_path = "");
+                           const std::string& _schema_path = "");
 
     /**
      * @brief Function for the client to send a request to the server.
@@ -91,8 +94,8 @@ class NuDock
      * @param _message json object with the request message
      * @return json object with the response from the server
      */
-    json send_request(const std::string& _request_name,
-                      const json& _message);
+    nlohmann::json send_request(const std::string& _request_name,
+                      const nlohmann::json& _message);
 
   // Private member functions
   private:
@@ -103,7 +106,7 @@ class NuDock
      * @return true Communication successful
      * @return false Communication failed
      */
-    bool validate_start(const json& _message);
+    bool validate_start(const nlohmann::json& _message);
 
     /**
      * @brief Loads json object from a given file path.
@@ -111,12 +114,11 @@ class NuDock
      * @param _path Path to the json file
      * @return json Json object loaded from the file
      */
-    json load_json_file(const std::string_view& _path);
+    nlohmann::json load_json_file(const std::string& _path);
 
   // Private member data
   private:
     /// @brief version of the server/client.
-    /// @todo Make this a compile-time constant, or read from a file.
     std::string m_version = NUDOCK_VERSION;
 
     /// @brief server object with external experiment
@@ -143,5 +145,5 @@ class NuDock
     custom_throwing_error_handler m_err;
 
     /// @brief Counter for the number of requests sent / processed
-    uint64_t m_request_counter = 0;
+    uint64_t m_request_counter;
 };

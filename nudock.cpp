@@ -1,20 +1,27 @@
 #include "nudock.hpp"
 
-NuDock::NuDock(bool _debug, const std::string& _default_schemas_location)
-  : m_debug(_debug), m_default_schemas_location(_default_schemas_location)
+NuDock::NuDock(bool _debug, const std::string &_default_schemas_location)
+    : m_server(nullptr),
+      m_client(nullptr),
+      m_debug(_debug), m_debug_prefix("Undefined"),
+      m_default_schemas_location(_default_schemas_location),
+      m_request_counter(0)
 {
+  std::cout << DEBUG() << "Created Nudock instance!" << std::endl;
+  std::cout << DEBUG() << "debug  : " << m_debug << std::endl;
+  std::cout << DEBUG() << "schemas: " << m_default_schemas_location << std::endl;
 }
 
-json NuDock::load_json_file(const std::string_view& _path)
+nlohmann::json NuDock::load_json_file(const std::string& _path)
 {
-  std::ifstream file(_path.data());
+  std::ifstream file(_path.c_str());
   if (!file.is_open()) {
     throw std::runtime_error("Could not open file: " + std::string(_path));
   }
 
-  json j;
+  nlohmann::json j;
   try {
-    j = json::parse(file);
+    j = nlohmann::json::parse(file);
   } catch (const nlohmann::json::parse_error& e) {
     throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
   }
@@ -24,7 +31,7 @@ json NuDock::load_json_file(const std::string_view& _path)
 
 void NuDock::register_response(const std::string& _request,
                                HandlerFunction _handler_function,
-                               const std::string_view& _schema_path)
+                               const std::string& _schema_path)
 {
   std::string schema_path = _schema_path.empty() ? m_default_schemas_location + _request + ".schema.json" : std::string(_schema_path);
 
@@ -39,7 +46,7 @@ void NuDock::register_response(const std::string& _request,
   }
 
   // Create the schema validator for a specific request
-  json schema = load_json_file(schema_path);
+  nlohmann::json schema = load_json_file(schema_path);
   SchemaValidator validator;
   validator.schema = schema["properties"];
 
@@ -59,7 +66,7 @@ void NuDock::register_response(const std::string& _request,
   std::cout << DEBUG() << "Registered request handler for \"" << _request << "\" with schema at: " << schema_path << std::endl;
 }
 
-bool NuDock::validate_start(const json& _message)
+bool NuDock::validate_start(const nlohmann::json& _message)
 {
   if (!_message.contains("version")) {
     std::cerr << DEBUG() << "Received /validate_start request without provided \"version\" entry! We will crash. Full request received:" << std::endl;
@@ -72,7 +79,7 @@ bool NuDock::validate_start(const json& _message)
     return false;
   }
   else {
-    std::cout << "Internal version: " << m_version << " external version: " << _message["version"] << std::endl;
+    std::cout << DEBUG() << "Internal version: " << m_version << " external version: " << _message["version"] << std::endl;
   }
 
   return true;
@@ -102,11 +109,11 @@ void NuDock::start_server()
       std::cout << "Server received request for /validate_start" << std::endl;
 
       // deserialize
-      json req_json = json::parse(req.body);
+      nlohmann::json req_json = nlohmann::json::parse(req.body);
       bool validated = validate_start(req_json);
       std::cout << DEBUG() << "Server validated, sending validation response to the client to validate it" << std::endl;
 
-      json res_json;
+      nlohmann::json res_json;
       res_json["version"] = m_version;
 
       res.set_content(res_json.dump(), "application/json");
@@ -121,39 +128,43 @@ void NuDock::start_server()
     }
   });
 
-  // Listen to the registered requests
+  // Iterate over and listen to the registered requests
   for (const auto& [request_name, handler]: m_request_handlers) {
     m_server->Post(request_name.c_str(), [request_name, handler, this](const httplib::Request& req, httplib::Response& res) {
       try {
         m_request_counter++;
         // Validating the request
-        json req_json = json::parse(req.body);
-        try {
-          m_schema_validator[request_name].request_validator->validate(req_json, m_err);
-        }
-        catch (const std::exception& e) {
-          std::cout << DEBUG() << "Validating the request with name \"" << request_name << "\" failed! Here is why: " << e.what() << std::endl;
-          std::cout << DEBUG() << " -- Expected format : " << m_schema_validator[request_name].schema["request"].dump() << std::endl;
-          std::cout << DEBUG() << " -- Request received: " << req_json.dump() << std::endl;
-          std::cout << DEBUG() << " -- Aborting" << std::endl;
-          ERROR_RESPONSE(res, "Server request validation failed: " + std::string(e.what()));
+        nlohmann::json req_json = nlohmann::json::parse(req.body);
+
+        if (m_debug) {
+          try {
+            m_schema_validator[request_name].request_validator->validate(req_json, m_err);
+          }
+          catch (const std::exception& e) {
+            std::cout << DEBUG() << "Validating the request with name \"" << request_name << "\" failed! Here is why: " << e.what() << std::endl;
+            std::cout << DEBUG() << " -- Expected format : " << m_schema_validator[request_name].schema["request"].dump() << std::endl;
+            std::cout << DEBUG() << " -- Request received: " << req_json.dump() << std::endl;
+            std::cout << DEBUG() << " -- Aborting" << std::endl;
+            ERROR_RESPONSE(res, "Server request validation failed: " + std::string(e.what()));
+          }
         }
 
         // Getting the response
-        json response_json = handler(req_json);
+        nlohmann::json response_json = handler(req_json);
 
         // Validating the response
-        try {
-          m_schema_validator[request_name].response_validator->validate(response_json, m_err);
+        if (m_debug) {
+          try {
+            m_schema_validator[request_name].response_validator->validate(response_json, m_err);
+          }
+          catch (const std::exception& e) {
+            std::cout << DEBUG() << "Validating the response failed! Here is why: " << e.what() << std::endl;
+            std::cout << DEBUG() << "Expected format: " << m_schema_validator[request_name].schema["response"].dump() << std::endl;
+            std::cout << DEBUG() << "Response given : " << response_json.dump() << std::endl;
+            std::cout << DEBUG() << "Aborting" << std::endl;
+            ERROR_RESPONSE(res, "Server response validation failed: " + std::string(e.what()));
+          }
         }
-        catch (const std::exception& e) {
-          std::cout << DEBUG() << "Validating the response failed! Here is why: " << e.what() << std::endl;
-          std::cout << DEBUG() << "Expected format: " << m_schema_validator[request_name].schema["response"].dump() << std::endl;
-          std::cout << DEBUG() << "Response given : " << response_json.dump() << std::endl;
-          std::cout << DEBUG() << "Aborting" << std::endl;
-          ERROR_RESPONSE(res, "Server response validation failed: " + std::string(e.what()));
-        }
-
 
         // Sending the response back to the client
         res.set_content(response_json.dump(), "application/json");
@@ -173,7 +184,7 @@ void NuDock::start_server()
         return;
     }
 
-    json err = {
+    nlohmann::json err = {
         {"error", "Unknown request title: " + path}
     };
     res.status = 404;
@@ -187,7 +198,7 @@ void NuDock::start_server()
 
   std::cout << DEBUG() << "VERSION: " << m_version << " started" << std::endl;
 
-  m_server->listen("localhost", 8080);
+  m_server->listen("localhost", 1234);
 }
 
 void NuDock::start_client()
@@ -199,15 +210,15 @@ void NuDock::start_client()
 
   m_debug_prefix = "Client";
   std::cout << "Starting the client" << std::endl;
-  m_client = std::make_unique<httplib::Client>("localhost", 8080);
+  m_client = std::make_unique<httplib::Client>("localhost", 1234);
   std::cout << "Client started!" << std::endl;
 
-  json req_json_validate;
+  nlohmann::json req_json_validate;
   req_json_validate["version"] = m_version;
 
   auto res = m_client->Post("/validate_start", req_json_validate.dump(), "application/json");
   if (res && res->status == 200) {
-    auto res_json = json::parse(res->body);
+    auto res_json = nlohmann::json::parse(res->body);
     validate_start(res_json);
     std::cout << DEBUG() << "Client validated!" << std::endl;
   }
@@ -221,7 +232,7 @@ void NuDock::start_client()
   std::cout << DEBUG() << "VERSION: " << m_version << " started" << std::endl;
 }
 
-json NuDock::send_request(const std::string& _request, const json& _message)
+nlohmann::json NuDock::send_request(const std::string& _request, const nlohmann::json& _message)
 {
   m_request_counter++;
   if (!m_client) {
@@ -238,7 +249,7 @@ json NuDock::send_request(const std::string& _request, const json& _message)
     httplib::Result res = m_client->Post(_request, _message.dump(), "application/json");
 
     if (res && res->status == 200) {
-      json res_json = json::parse(res->body);
+      nlohmann::json res_json = nlohmann::json::parse(res->body);
       std::cout << DEBUG() << "Received response: " << res_json << " from Server" << std::endl;
       std::cout << DEBUG() << "Request counter: " << m_request_counter << std::endl;
       return res_json;
@@ -253,5 +264,4 @@ json NuDock::send_request(const std::string& _request, const json& _message)
     std::cerr << DEBUG() << "Exception caught while sending request: " << e.what() << std::endl;
     std::abort();
   }
-
 }

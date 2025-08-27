@@ -1,0 +1,23 @@
+{
+  "$id": "get_parameter_names",
+  "type": "object",
+  "properties": {
+    "request": {
+      "type": "string",
+      "additionalProperties": false
+    },
+    "response": {
+      "type": "object",
+      "properties": {
+        "osc_pars": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sys_pars": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

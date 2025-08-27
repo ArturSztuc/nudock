@@ -3,28 +3,14 @@
   "type": "object",
   "properties": {
     "request": {
-      "type":"object",
-      "properties": {
-        "osc_pars": {
-          "type": "object",
-          "patternProperties": {
-            "^[a-zA-Z_][a-zA-Z0-9_]*$": { "type": "number"}
-          },
-          "additionalProperties": false
-        },
-        "sys_pars": {
-          "type": "object",
-          "patternProperties": {
-            "^[a-zA-Z_][a-zA-Z0-9_]*$": { "type": "number"}
-          },
-          "additionalProperties": false
-        }
-      }
+      "type": "string",
+      "additionalProperties": false
     },
     "response": {
       "type": "object",
       "properties": {
-        "log_likelihood" : {"type": "number"}
+        "log_likelihood" : {"type": "number"},
+        "duration_us": {"type": "number"}
       },
       "required": ["log_likelihood"],
       "additionalProperties": false
